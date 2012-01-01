@@ -1,0 +1,3 @@
+name = Formatter Field
+core = 7.x
+dependencies[] = field

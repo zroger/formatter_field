@@ -1,0 +1,150 @@
+<?php
+/**
+ * @file
+ */
+
+/**
+ * Implements hook_field_info().
+ */
+function formatter_field_field_info() {
+  return array(
+    'formatter' => array(
+      'label' => t('Formatter'), 
+      'description' => t('This field stores formatter information for another field.'), 
+      'settings' => array(), 
+      'instance_settings' => array('field_name' => ''), 
+      'default_widget' => 'formatter_select', 
+      'default_formatter' => 'hidden',
+    ),
+  );
+}
+
+/**
+ * Implements hook_field_is_empty().
+ */
+function formatter_field_field_is_empty($item, $field) {
+  if (empty($item['type'])) {
+    return TRUE;
+  }
+  return FALSE;
+}
+
+/**
+ * Implements hook_field_instance_settings_form().
+ */
+function formatter_field_field_instance_settings_form($field, $instance) {
+  $settings = $instance['settings'];
+
+  // TODO: fill options with fields from the same bundle.
+  $options = array('body');
+
+  $form['field_name'] = array(
+    '#type' => 'select', 
+    '#title' => t('Field to be formatted'), 
+    '#default_value' => $settings['field_name'], 
+    '#required' => TRUE, 
+    '#options' => $options,
+    '#description' => t('The field to be formatted using the settings in this field.'),
+  );
+  return $form;
+}
+
+/**
+ * Implements hook_field_widget_info().
+ */
+function formatter_field_field_widget_info() {
+  return array(
+    'formatter_select' => array(
+      'label' => t('Formatter select'), 
+      'field types' => array('formatter'), 
+      'settings' => array(), 
+      'behaviors' => array(
+        'multiple values' => FIELD_BEHAVIOR_DEFAULT, 
+        'default value' => FIELD_BEHAVIOR_DEFAULT,
+      ),
+    ), 
+  );
+}
+
+/**
+ * Implements hook_field_widget_form().
+ */
+function formatter_field_field_widget_form(&$form, &$form_state, $field, $instance, $langcode, $items, $delta, $element) {
+  // TODO: implement select box w/ ajax settings form.
+  $element += array(
+    '#type' => $instance['widget']['type'],
+    '#default_value' => isset($items[$delta]) ? $items[$delta] : '',
+  );
+  return $element;
+}
+
+/**
+ * Implements hook_field_formatter_info().
+ */
+function formatter_field_field_formatter_info() {
+  $fields = field_info_field_types();
+  unset($fields['formatter']);
+
+  return array(
+    'from_field' => array(
+      'label' => t('Formatter from field'), 
+      'field types' => array_keys($fields),
+      'settings' => array(
+        'formatter_field' => '',
+      ),
+    ),
+  );
+}
+
+/**
+ * Implements hook_field_formatter_settings_form().
+ */
+function formatter_field_field_formatter_settings_form($field, $instance, $view_mode, $form, &$form_state) {
+  $display = $instance['display'][$view_mode];
+  $settings = $display['settings'];
+
+  $element = array();
+
+  if ($display['type'] == 'from_field') {
+    // TODO: fill options with formatter fields from the same bundle.
+    $options = drupal_map_assoc(array('field_body_formatter'));
+
+    $element['formatter_field'] = array(
+      '#title' => t('Formatter field'), 
+      '#type' => 'select', 
+      '#default_value' => $settings['formatter_field'], 
+      '#options' => $options,
+      '#required' => TRUE,
+    );
+  }
+
+  return $element;
+}
+
+/**
+ * Implements hook_field_formatter_settings_summary().
+ */
+function formatter_field_field_formatter_settings_summary($field, $instance, $view_mode) {
+  $display = $instance['display'][$view_mode];
+  $settings = $display['settings'];
+
+  // TODO: Use human-readable field name.
+  $summary = t('Formatted by @field', array('@field' => $settings['formatter_field']));
+
+  return $summary;
+}
+
+/**
+ * Implements hook_field_formatter_view().
+ */
+function formatter_field_field_formatter_view($entity_type, $entity, $field, $instance, $langcode, $items, $display) {
+  $element = array();
+  if ($display['type'] == 'from_field') {
+    // TODO: implement formatter delegation.
+    // - Get formatter field from display settings.
+    // - Get actual formatter and formatter settings from formatter field.
+    // - Delegate to actual formatter.  see: field_default_view().
+  }
+  return $element;
+}
+
