@@ -104,7 +104,6 @@ function formatter_field_field_formatter_settings_form($field, $instance, $view_
   $settings = $display['settings'];
 
   $element = array();
-
   if ($display['type'] == 'from_field') {
     // TODO: fill options with formatter fields from the same bundle.
     $options = drupal_map_assoc(array('field_body_formatter'));
@@ -128,8 +127,8 @@ function formatter_field_field_formatter_settings_summary($field, $instance, $vi
   $display = $instance['display'][$view_mode];
   $settings = $display['settings'];
 
-  // TODO: Use human-readable field name.
-  $summary = t('Formatted by @field', array('@field' => $settings['formatter_field']));
+  $formatter_field = field_read_instance($instance['entity_type'], $settings['formatter_field'], $instance['bundle']);
+  $summary = t('Formatted by @field field.', array('@field' => $formatter_field['label']));
 
   return $summary;
 }
