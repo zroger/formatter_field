@@ -169,10 +169,14 @@ function formatter_field_field_formatter_settings_summary($field, $instance, $vi
 function formatter_field_field_formatter_view($entity_type, $entity, $field, $instance, $langcode, $items, $display) {
   $element = array();
   if ($display['type'] == 'from_field') {
-    // TODO: implement formatter delegation.
-    // - Get formatter field from display settings.
-    // - Get actual formatter and formatter settings from formatter field.
-    // - Delegate to actual formatter.  see: field_default_view().
+    $formatter_instance = field_read_instance($instance['entity_type'], $display['settings']['formatter_field'], $instance['bundle']);
+    $formatter_items = field_get_items($entity_type, $entity, $display['settings']['formatter_field']);
+    $display = $formatter_items[0] + $display;
+
+    $formatter_type = field_info_formatter_types($display['type']);
+    $display['module'] = $formatter_type['module'];
+
+    $element = module_invoke($display['module'], 'field_formatter_view', $entity_type, $entity, $field, $instance, $langcode, $items, $display);
   }
   return $element;
 }
