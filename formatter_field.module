@@ -9,11 +9,11 @@
 function formatter_field_field_info() {
   return array(
     'formatter' => array(
-      'label' => t('Formatter'), 
-      'description' => t('This field stores formatter information for another field.'), 
-      'settings' => array(), 
-      'instance_settings' => array('field_name' => ''), 
-      'default_widget' => 'formatter_select', 
+      'label' => t('Formatter'),
+      'description' => t('This field stores formatter information for another field.'),
+      'settings' => array(),
+      'instance_settings' => array('field_name' => ''),
+      'default_widget' => 'formatter_select',
       'default_formatter' => 'hidden',
     ),
   );
@@ -46,10 +46,10 @@ function formatter_field_field_instance_settings_form($field, $instance) {
   }
 
   $form['field_name'] = array(
-    '#type' => 'select', 
-    '#title' => t('Field to be formatted'), 
-    '#default_value' => $settings['field_name'], 
-    '#required' => TRUE, 
+    '#type' => 'select',
+    '#title' => t('Field to be formatted'),
+    '#default_value' => $settings['field_name'],
+    '#required' => TRUE,
     '#options' => $options,
     '#description' => t('The field to be formatted using the settings in this field.'),
   );
@@ -62,14 +62,14 @@ function formatter_field_field_instance_settings_form($field, $instance) {
 function formatter_field_field_widget_info() {
   return array(
     'formatter_select' => array(
-      'label' => t('Formatter select'), 
-      'field types' => array('formatter'), 
-      'settings' => array(), 
+      'label' => t('Formatter select'),
+      'field types' => array('formatter'),
+      'settings' => array(),
       'behaviors' => array(
-        'multiple values' => FIELD_BEHAVIOR_DEFAULT, 
+        'multiple values' => FIELD_BEHAVIOR_DEFAULT,
         'default value' => FIELD_BEHAVIOR_DEFAULT,
       ),
-    ), 
+    ),
   );
 }
 
@@ -77,28 +77,87 @@ function formatter_field_field_widget_info() {
  * Implements hook_field_widget_form().
  */
 function formatter_field_field_widget_form(&$form, &$form_state, $field, $instance, $langcode, $items, $delta, $element) {
+  // Field to be formatted.
   $formatted_field = field_read_field($instance['settings']['field_name']);
+  // Field instance to be formatted.
   $formatted_instance = field_read_instance($instance['entity_type'], $instance['settings']['field_name'], $instance['bundle']);
 
+  // Fetch formatter options, excluding the "from_field" formatter.
   module_load_include('inc', 'field_ui', 'field_ui.admin');
   $formatter_options = field_ui_formatter_options($formatted_field['type']);
   unset($formatter_options['from_field']);
   $formatter_options['hidden'] = t('<Hidden>');
 
+  // Populate $items from $form_state values if available.  This is necessary
+  // for the #ajax functionality.
+  if (!empty($form_state['values'])) {
+    $path = array($field['field_name'], $langcode);
+    $items = drupal_array_get_nested_value($form_state['values'], $path);
+  }
+
+  if (is_string($items[$delta]['settings'])) {
+    $items[$delta]['settings'] = unserialize($items[$delta]['settings']);
+  }
+
+  $element['#element_validate'] = array('formatter_field_field_widget_form_validate');
+  $wrapper_id = 'formatter-field-settings-form--'. $field['field_name'];
+
   $element['type'] = array(
     '#type' => 'select',
-    '#title' => t('Formatter for @title', array('@title' => $formatted_instance['label'])), 
+    '#title' => t('Formatter for @title', array('@title' => $formatted_instance['label'])),
     '#options' => $formatter_options,
     '#default_value' => isset($items[$delta]['type']) ? $items[$delta]['type'] : '',
+    '#ajax' => array(
+      'callback' => 'formatter_field_field_widget_form_js',
+      'wrapper' => $wrapper_id,
+      'effect' => 'fade',
+    ),
   );
 
-  $element['settings'] = array(
+  // Prepare $formatted_instance to be passed to hook_field_formatter_settings_form().
+  // Display settings are stored in the _custom_display view mode.
+  $formatter = field_info_formatter_types($items[$delta]['type']);
+  $view_mode = '_custom_display';
+  $formatted_instance['display'][$view_mode] = $items[$delta] + array(
+    'module' => $formatter['module'],
+  );
+
+  // Retrieve the settings form segment.
+  $settings_form = array();
+  $function = $formatter['module'] . '_field_formatter_settings_form';
+  if (function_exists($function)) {
+    $settings_form = $function($formatted_field, $formatted_instance, $view_mode, $form, $form_state);
+  }
+  $element['settings'] = $settings_form + array(
+    '#type' => 'container',
+    '#prefix' => '<div id="'. $wrapper_id .'">',
+    '#suffix' => '</div>',
     '#tree' => 1,
   );
 
-  // TODO: implement ajax settings form.
-
   return $element;
+}
+
+/**
+ * #element_validate callback for formatter_field_field_widget_form().
+ *
+ * Serialize the settings before saving.
+ */
+function formatter_field_field_widget_form_validate($element, &$form_state) {
+  $values = drupal_array_get_nested_value($form_state['values'], $element['#parents']);
+  $values['settings'] = serialize($values['settings']);
+  form_set_value($element, $values, $form_state);
+}
+
+/**
+ * #ajax callback for formatter_field_field_widget_form().
+ */
+function formatter_field_field_widget_form_js($form, &$form_state) {
+  $trigger = $form_state['triggering_element'];
+  $path = $trigger['#parents'];
+  array_pop($path);
+  $path[] = 'settings';
+  return drupal_array_get_nested_value($form, $path);
 }
 
 /**
@@ -110,7 +169,7 @@ function formatter_field_field_formatter_info() {
 
   return array(
     'from_field' => array(
-      'label' => t('Formatter from field'), 
+      'label' => t('Formatter from field'),
       'field types' => array_keys($fields),
       'settings' => array(
         'formatter_field' => '',
@@ -139,9 +198,9 @@ function formatter_field_field_formatter_settings_form($field, $instance, $view_
     }
 
     $element['formatter_field'] = array(
-      '#title' => t('Formatter field'), 
-      '#type' => 'select', 
-      '#default_value' => $settings['formatter_field'], 
+      '#title' => t('Formatter field'),
+      '#type' => 'select',
+      '#default_value' => $settings['formatter_field'],
       '#options' => $options,
       '#required' => TRUE,
     );
@@ -172,6 +231,10 @@ function formatter_field_field_formatter_view($entity_type, $entity, $field, $in
     $formatter_instance = field_read_instance($instance['entity_type'], $display['settings']['formatter_field'], $instance['bundle']);
     $formatter_items = field_get_items($entity_type, $entity, $display['settings']['formatter_field']);
     $display = $formatter_items[0] + $display;
+
+    if (is_string($display['settings'])) {
+      $display['settings'] = unserialize($display['settings']);
+    }
 
     $formatter_type = field_info_formatter_types($display['type']);
     $display['module'] = $formatter_type['module'];
