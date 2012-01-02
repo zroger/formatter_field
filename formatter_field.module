@@ -77,11 +77,27 @@ function formatter_field_field_widget_info() {
  * Implements hook_field_widget_form().
  */
 function formatter_field_field_widget_form(&$form, &$form_state, $field, $instance, $langcode, $items, $delta, $element) {
-  // TODO: implement select box w/ ajax settings form.
-  $element += array(
-    '#type' => $instance['widget']['type'],
-    '#default_value' => isset($items[$delta]) ? $items[$delta] : '',
+  $formatted_field = field_read_field($instance['settings']['field_name']);
+  $formatted_instance = field_read_instance($instance['entity_type'], $instance['settings']['field_name'], $instance['bundle']);
+
+  module_load_include('inc', 'field_ui', 'field_ui.admin');
+  $formatter_options = field_ui_formatter_options($formatted_field['type']);
+  unset($formatter_options['from_field']);
+  $formatter_options['hidden'] = t('<Hidden>');
+
+  $element['type'] = array(
+    '#type' => 'select',
+    '#title' => t('Formatter for @title', array('@title' => $formatted_instance['label'])), 
+    '#options' => $formatter_options,
+    '#default_value' => isset($items[$delta]['type']) ? $items[$delta]['type'] : '',
   );
+
+  $element['settings'] = array(
+    '#tree' => 1,
+  );
+
+  // TODO: implement ajax settings form.
+
   return $element;
 }
 
